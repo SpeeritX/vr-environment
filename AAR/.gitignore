@@ -46,3 +46,5 @@ sysinfo.txt
 # Builds
 *.apk
 *.unitypackage
+
+build_BackUpThisFolder_ButDontShipItWithYourGame
