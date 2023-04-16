@@ -14,6 +14,12 @@ public class SyncPoseReceiver : SyncPose
     [SerializeField]
     protected bool updateTransform;
 
+    [SerializeField]
+    private Transform centerEyeCamera;
+
+    private Vector3? positionShift = null;
+    private Quaternion? rotationShift = null;
+
     [Header("Events")]
     public UnityEvent connectionEstablished;
     public UnityEvent connectionLost;
@@ -72,10 +78,22 @@ public class SyncPoseReceiver : SyncPose
     protected virtual Pose UpdateTransform()
     {
         Pose receivedPose = DeserializePose(messageBuffer, formatter);
-        Debug.Log($"SyncPoseReceiver: Received a new pose: {receivedPose}");
-        transform.position = receivedPose.position;
-        transform.rotation = receivedPose.rotation;
+        if (positionShift == null || rotationShift == null)
+        {
+            Debug.Log($"CenterEyeCamera position: {centerEyeCamera.position}");
+            Debug.Log($"Camera position: {Camera.main.transform.position}");
+            transform.position = centerEyeCamera.position;
+            transform.rotation = centerEyeCamera.rotation;
 
+            positionShift = receivedPose.position - transform.position;
+            rotationShift = Quaternion.Inverse(transform.rotation) * receivedPose.rotation;
+            Debug.Log($"Position shift: {positionShift}");
+        }
+        else if (positionShift != null && rotationShift != null)
+        {
+            transform.position = receivedPose.position - (Vector3)positionShift;
+            transform.rotation = receivedPose.rotation * (Quaternion)rotationShift;
+        }
         return receivedPose;
     }
 
@@ -107,7 +125,6 @@ public class SyncPoseReceiver : SyncPose
 
     protected static Pose DeserializePose(byte[] buffer, BinaryFormatter formatter)
     {
-        Debug.Log($"SyncPoseReceiver: Deserializing a pose");
         using (var stream = new MemoryStream(buffer))
         {
             return (Pose)formatter.Deserialize(stream);

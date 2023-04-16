@@ -220,6 +220,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   port: 54300
   updateTransform: 1
+  centerEyeCamera: {fileID: 1600812347}
   connectionEstablished:
     m_PersistentCalls:
       m_Calls: []
