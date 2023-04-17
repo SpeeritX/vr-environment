@@ -20,6 +20,8 @@ public class SyncPoseReceiver : SyncPose
     private bool synchronized = false;
     private Vector3 initialPhonePosition;
     private Vector3 initialHeadsetPosition;
+    private float initialPhoneRotation;
+    private float initialHeadsetRotation;
     private float rotationShift = 0;
 
     [Header("Events")]
@@ -104,8 +106,11 @@ public class SyncPoseReceiver : SyncPose
             initialHeadsetPosition = transform.position;
             initialPhonePosition = receivedPose.position;
             Quaternion headsetRotation = transform.rotation;
+            initialPhoneRotation = receivedPose.rotation.eulerAngles.y;
+            initialHeadsetRotation = headsetRotation.eulerAngles.y;
             rotationShift = receivedPose.rotation.eulerAngles.y - headsetRotation.eulerAngles.y;
-            Debug.Log($"rotationShift: {rotationShift}");
+            Debug.Log($"initialPhoneRotation: {initialPhoneRotation}");
+            Debug.Log($"initialHeadsetRotation: {initialHeadsetRotation}");
             Debug.Log($"initialHeadsetPosition: {initialHeadsetPosition}");
             Debug.Log($"initialPhonePosition: {initialPhonePosition}");
         }
@@ -116,8 +121,12 @@ public class SyncPoseReceiver : SyncPose
             Vector3 rotatedRelativePosition = Quaternion.Euler(0, -rotationShift, 0) * relativePosition;
             Debug.Log($"Rotated relative position: {rotatedRelativePosition}");
             transform.position = initialHeadsetPosition + rotatedRelativePosition;
-            transform.rotation = receivedPose.rotation;
-            transform.Rotate(0, -rotationShift, 0);
+
+            Debug.Log($"Phone rotation before adjustment: {receivedPose.rotation.eulerAngles}");
+            Quaternion relativeRotation = receivedPose.rotation * Quaternion.Euler(0, -initialPhoneRotation, 0); ;
+            Debug.Log($"Relative phone rotation: {relativeRotation.eulerAngles}");
+            transform.rotation = Quaternion.Euler(0, initialHeadsetRotation, 0) * relativeRotation;
+            Debug.Log($"Phone rotation including headset starting position: {transform.rotation.eulerAngles}");
         }
         return receivedPose;
     }
