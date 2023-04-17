@@ -17,13 +17,17 @@ public class SyncPoseReceiver : SyncPose
     [SerializeField]
     private Transform centerEyeCamera;
 
-    private Vector3? positionShift = null;
-    private Quaternion? rotationShift = null;
+    private bool synchronized = false;
+    private Vector3 initialPhonePosition;
+    private Vector3 initialHeadsetPosition;
+    private float rotationShift = 0;
 
     [Header("Events")]
     public UnityEvent connectionEstablished;
     public UnityEvent connectionLost;
     public UnityEventPose newPoseReceived;
+
+    private bool first = true;
 
     protected override void Start()
     {
@@ -42,6 +46,16 @@ public class SyncPoseReceiver : SyncPose
 
     protected virtual void Update()
     {
+        if (first)
+        {
+            first = false;
+            Transform headsetTransform = OVRManager.instance.transform;
+            Debug.Log($"headsetPosition position: {headsetTransform.position}");
+            Debug.Log($"CenterEyeCamera position: {centerEyeCamera.position}");
+
+            transform.position = centerEyeCamera.position;
+            transform.rotation = centerEyeCamera.rotation;
+        }
         try
         {
             var eventType = NetworkTransport.Receive(out int outHostID, out int outConnectionID, out int outChannelID,
@@ -78,33 +92,31 @@ public class SyncPoseReceiver : SyncPose
     protected virtual Pose UpdateTransform()
     {
         Pose receivedPose = DeserializePose(messageBuffer, formatter);
-        if (positionShift == null || rotationShift == null)
+        if (synchronized == false)
         {
+            synchronized = true;
             Debug.Log($"Received pose position: {receivedPose.position}");
-            Transform headsetTransform = OVRManager.instance.transform;
-            Debug.Log($"headsetPosition position: {headsetTransform.position}");
             Debug.Log($"CenterEyeCamera position: {centerEyeCamera.position}");
 
-            transform.position = headsetTransform.position;
-            transform.rotation = headsetTransform.rotation;
+            transform.position = centerEyeCamera.position;
+            // transform.rotation = centerEyeCamera.rotation;
 
-            positionShift = receivedPose.position - transform.position;
+            initialHeadsetPosition = transform.position;
+            initialPhonePosition = receivedPose.position;
             Quaternion headsetRotation = transform.rotation;
-            headsetRotation.x = 0;
-            headsetRotation.z = 0;
-            receivedPose.rotation.x = 0;
-            receivedPose.rotation.z = 0;
-            rotationShift = Quaternion.Inverse(Quaternion.Inverse(transform.rotation) * receivedPose.rotation);
-            Debug.Log($"Position shift: {positionShift}");
+            rotationShift = receivedPose.rotation.eulerAngles.y - headsetRotation.eulerAngles.y;
+            Debug.Log($"rotationShift: {rotationShift}");
+            Debug.Log($"initialHeadsetPosition: {initialHeadsetPosition}");
+            Debug.Log($"initialPhonePosition: {initialPhonePosition}");
         }
-        else if (positionShift != null && rotationShift != null)
+        else
         {
-            Vector3 relativePosition = receivedPose.position - (Vector3)positionShift;
+            Vector3 relativePosition = receivedPose.position - initialPhonePosition;
             Debug.Log($"Relative position: {relativePosition}");
-            Vector3 rotatedRelativePosition = (Quaternion)rotationShift * relativePosition;
+            Vector3 rotatedRelativePosition = Quaternion.Euler(0, -rotationShift, 0) * relativePosition;
             Debug.Log($"Rotated relative position: {rotatedRelativePosition}");
-            transform.position = rotatedRelativePosition;
-            transform.rotation = receivedPose.rotation * (Quaternion)rotationShift;
+            transform.position = initialHeadsetPosition + rotatedRelativePosition;
+            // transform.rotation = receivedPose.rotation * (Quaternion)rotationShift;
         }
         return receivedPose;
     }
