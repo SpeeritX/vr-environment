@@ -80,18 +80,30 @@ public class SyncPoseReceiver : SyncPose
         Pose receivedPose = DeserializePose(messageBuffer, formatter);
         if (positionShift == null || rotationShift == null)
         {
+            Debug.Log($"Received pose position: {receivedPose.position}");
+            Transform headsetTransform = OVRManager.instance.transform;
+            Debug.Log($"headsetPosition position: {headsetTransform.position}");
             Debug.Log($"CenterEyeCamera position: {centerEyeCamera.position}");
-            Debug.Log($"Camera position: {Camera.main.transform.position}");
-            transform.position = centerEyeCamera.position;
-            transform.rotation = centerEyeCamera.rotation;
+
+            transform.position = headsetTransform.position;
+            transform.rotation = headsetTransform.rotation;
 
             positionShift = receivedPose.position - transform.position;
-            rotationShift = Quaternion.Inverse(transform.rotation) * receivedPose.rotation;
+            Quaternion headsetRotation = transform.rotation;
+            headsetRotation.x = 0;
+            headsetRotation.z = 0;
+            receivedPose.rotation.x = 0;
+            receivedPose.rotation.z = 0;
+            rotationShift = Quaternion.Inverse(Quaternion.Inverse(transform.rotation) * receivedPose.rotation);
             Debug.Log($"Position shift: {positionShift}");
         }
         else if (positionShift != null && rotationShift != null)
         {
-            transform.position = receivedPose.position - (Vector3)positionShift;
+            Vector3 relativePosition = receivedPose.position - (Vector3)positionShift;
+            Debug.Log($"Relative position: {relativePosition}");
+            Vector3 rotatedRelativePosition = (Quaternion)rotationShift * relativePosition;
+            Debug.Log($"Rotated relative position: {rotatedRelativePosition}");
+            transform.position = rotatedRelativePosition;
             transform.rotation = receivedPose.rotation * (Quaternion)rotationShift;
         }
         return receivedPose;
