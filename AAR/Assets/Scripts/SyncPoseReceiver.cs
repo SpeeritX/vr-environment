@@ -99,7 +99,7 @@ public class SyncPoseReceiver : SyncPose
             Debug.Log($"CenterEyeCamera position: {centerEyeCamera.position}");
 
             transform.position = centerEyeCamera.position;
-            // transform.rotation = centerEyeCamera.rotation;
+            transform.rotation = centerEyeCamera.rotation;
 
             initialHeadsetPosition = transform.position;
             initialPhonePosition = receivedPose.position;
@@ -116,7 +116,8 @@ public class SyncPoseReceiver : SyncPose
             Vector3 rotatedRelativePosition = Quaternion.Euler(0, -rotationShift, 0) * relativePosition;
             Debug.Log($"Rotated relative position: {rotatedRelativePosition}");
             transform.position = initialHeadsetPosition + rotatedRelativePosition;
-            // transform.rotation = receivedPose.rotation * (Quaternion)rotationShift;
+            transform.rotation = receivedPose.rotation;
+            transform.Rotate(0, -rotationShift, 0);
         }
         return receivedPose;
     }
