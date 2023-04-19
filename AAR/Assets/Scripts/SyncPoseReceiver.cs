@@ -16,6 +16,8 @@ public class SyncPoseReceiver : SyncPose
 
     [SerializeField]
     private Transform centerEyeCamera;
+    [SerializeField]
+    private Camera phoneCamera;
 
     private bool synchronized = false;
     private Vector3 initialPhonePosition;
@@ -51,8 +53,6 @@ public class SyncPoseReceiver : SyncPose
         if (first)
         {
             first = false;
-            Transform headsetTransform = OVRManager.instance.transform;
-            Debug.Log($"headsetPosition position: {headsetTransform.position}");
             Debug.Log($"CenterEyeCamera position: {centerEyeCamera.position}");
 
             transform.position = centerEyeCamera.position;
@@ -81,6 +81,7 @@ public class SyncPoseReceiver : SyncPose
                     Debug.Log($"SyncPoseReceiver: Received a new pose");
                     Pose p = updateTransform ? UpdateTransform() : DeserializePose(messageBuffer, formatter);
                     newPoseReceived.Invoke(p.position, p.rotation);
+                    SendData();
                     break;
                 case NetworkEventType.DisconnectEvent:
                     Debug.Log($"SyncPoseReceiver: Disconnected from the server");
@@ -89,6 +90,45 @@ public class SyncPoseReceiver : SyncPose
             }
         }
         catch (NullReferenceException) { } // This happens when nobody listens to the connection events
+    }
+
+    private bool SendData()
+    {
+        Debug.Log($"Copy image from Capture to message");
+        byte[] image = Capture();
+        byte[] message = new byte[19962];
+        Array.Copy(image, 0, message, 0, image.Length);
+        Debug.Log("Message buffer ready");
+        NetworkTransport.Send(hostID, сonnectionID, channelID, message, message.Length, out byte error);
+        Debug.Log($"Sending data - end");
+        if ((NetworkError)error != NetworkError.Ok)
+        {
+            Debug.LogError($"SyncPoseReceiver: Couldn't send data over the network because of {(NetworkError)error}");
+            return false;
+        }
+        return true;
+    }
+
+    public byte[] Capture()
+    {
+        Debug.Log("Capturing image");
+        RenderTexture activeRenderTexture = RenderTexture.active;
+        RenderTexture.active = phoneCamera.targetTexture;
+        Debug.Log($"Image size: {phoneCamera.targetTexture.width}x{phoneCamera.targetTexture.height}");
+
+        phoneCamera.Render();
+        Debug.Log("Image rendered");
+        Texture2D image = new Texture2D(phoneCamera.targetTexture.width, phoneCamera.targetTexture.height);
+        image.ReadPixels(new Rect(0, 0, phoneCamera.targetTexture.width, phoneCamera.targetTexture.height), 0, 0);
+        image.Apply();
+        RenderTexture.active = activeRenderTexture;
+
+        Debug.Log("Image captured");
+        byte[] bytes = image.EncodeToPNG();
+        Destroy(image);
+        Debug.Log($"Image size: {bytes.Length}");
+        return bytes;
+
     }
 
     protected virtual Pose UpdateTransform()
