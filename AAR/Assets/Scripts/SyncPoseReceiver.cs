@@ -96,7 +96,7 @@ public class SyncPoseReceiver : SyncPose
     {
         Debug.Log($"Copy image from Capture to message");
         byte[] image = Capture();
-        byte[] message = new byte[19962];
+        byte[] message = new byte[30000];
         Array.Copy(image, 0, message, 0, image.Length);
         Debug.Log("Message buffer ready");
         NetworkTransport.Send(hostID, сonnectionID, channelID, message, message.Length, out byte error);
