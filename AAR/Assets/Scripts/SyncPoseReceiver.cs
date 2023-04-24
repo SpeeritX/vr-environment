@@ -143,7 +143,7 @@ public class SyncPoseReceiver : SyncPose
         image.Apply();
         RenderTexture.active = activeRenderTexture;
 
-        byte[] bytes = image.EncodeToPNG();
+        byte[] bytes = image.EncodeToJPG(30);
         Destroy(image);
         return bytes;
 
