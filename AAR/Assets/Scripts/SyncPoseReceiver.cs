@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.Networking;
 using System.Buffers.Binary;
+using System.Linq;
 
 
 public class SyncPoseReceiver : SyncPose
@@ -97,15 +98,24 @@ public class SyncPoseReceiver : SyncPose
     private void SendImage()
     {
         byte[] image = Capture();
-        byte[] imageLengthBytes = BitConverter.GetBytes(image.Length);
-        SendData(imageLengthBytes);
 
-        int sentBytes = 0;
+        byte[] message1 = new byte[MESSAGE_LENGTH];
+        byte[] imageLengthBytes = BitConverter.GetBytes(image.Length);
+        Array.Copy(imageLengthBytes, 0, message1, 0, 4);
+        int bytesToSend1 = Math.Min(image.Length, MESSAGE_LENGTH - 4);
+        Array.Copy(image, 0, message1, 4, bytesToSend1);
+        SendData(message1);
+
+        int sentBytes = bytesToSend1;
         while (sentBytes < image.Length)
         {
             int bytesToSend = Math.Min(image.Length - sentBytes, MESSAGE_LENGTH);
             byte[] message = new byte[MESSAGE_LENGTH];
             Array.Copy(image, sentBytes, message, 0, bytesToSend);
+            if (bytesToSend < MESSAGE_LENGTH)
+            {
+                message = message.Take(bytesToSend).ToArray();
+            }
             SendData(message);
             sentBytes += bytesToSend;
         }
@@ -135,7 +145,6 @@ public class SyncPoseReceiver : SyncPose
 
         byte[] bytes = image.EncodeToPNG();
         Destroy(image);
-        Debug.Log($"Image size: {bytes.Length}");
         return bytes;
 
     }
