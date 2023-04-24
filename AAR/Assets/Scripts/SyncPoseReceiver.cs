@@ -4,6 +4,8 @@ using System.Runtime.Serialization.Formatters.Binary;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.Networking;
+using System.Buffers.Binary;
+
 
 public class SyncPoseReceiver : SyncPose
 {
@@ -81,7 +83,7 @@ public class SyncPoseReceiver : SyncPose
                     Debug.Log($"SyncPoseReceiver: Received a new pose");
                     Pose p = updateTransform ? UpdateTransform() : DeserializePose(messageBuffer, formatter);
                     newPoseReceived.Invoke(p.position, p.rotation);
-                    SendData();
+                    SendImage();
                     break;
                 case NetworkEventType.DisconnectEvent:
                     Debug.Log($"SyncPoseReceiver: Disconnected from the server");
@@ -92,15 +94,26 @@ public class SyncPoseReceiver : SyncPose
         catch (NullReferenceException) { } // This happens when nobody listens to the connection events
     }
 
-    private bool SendData()
+    private void SendImage()
     {
-        Debug.Log($"Copy image from Capture to message");
         byte[] image = Capture();
-        byte[] message = new byte[30000];
-        Array.Copy(image, 0, message, 0, image.Length);
-        Debug.Log("Message buffer ready");
-        NetworkTransport.Send(hostID, сonnectionID, channelID, message, message.Length, out byte error);
-        Debug.Log($"Sending data - end");
+        byte[] imageLengthBytes = BitConverter.GetBytes(image.Length);
+        SendData(imageLengthBytes);
+
+        int sentBytes = 0;
+        while (sentBytes < image.Length)
+        {
+            int bytesToSend = Math.Min(image.Length - sentBytes, MESSAGE_LENGTH);
+            byte[] message = new byte[MESSAGE_LENGTH];
+            Array.Copy(image, sentBytes, message, 0, bytesToSend);
+            SendData(message);
+            sentBytes += bytesToSend;
+        }
+    }
+
+    private bool SendData(byte[] data)
+    {
+        NetworkTransport.Send(hostID, сonnectionID, channelID, data, data.Length, out byte error);
         if ((NetworkError)error != NetworkError.Ok)
         {
             Debug.LogError($"SyncPoseReceiver: Couldn't send data over the network because of {(NetworkError)error}");
@@ -111,19 +124,15 @@ public class SyncPoseReceiver : SyncPose
 
     public byte[] Capture()
     {
-        Debug.Log("Capturing image");
         RenderTexture activeRenderTexture = RenderTexture.active;
         RenderTexture.active = phoneCamera.targetTexture;
-        Debug.Log($"Image size: {phoneCamera.targetTexture.width}x{phoneCamera.targetTexture.height}");
 
         phoneCamera.Render();
-        Debug.Log("Image rendered");
         Texture2D image = new Texture2D(phoneCamera.targetTexture.width, phoneCamera.targetTexture.height);
         image.ReadPixels(new Rect(0, 0, phoneCamera.targetTexture.width, phoneCamera.targetTexture.height), 0, 0);
         image.Apply();
         RenderTexture.active = activeRenderTexture;
 
-        Debug.Log("Image captured");
         byte[] bytes = image.EncodeToPNG();
         Destroy(image);
         Debug.Log($"Image size: {bytes.Length}");
