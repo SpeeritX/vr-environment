@@ -6,6 +6,7 @@ using UnityEngine.Events;
 using UnityEngine.Networking;
 using System.Buffers.Binary;
 using System.Linq;
+using System.Collections;
 
 
 public class SyncPoseReceiver : SyncPose
@@ -49,26 +50,25 @@ public class SyncPoseReceiver : SyncPose
             enabled = false;
             return;
         }
+        StartCoroutine(NetworkEventsListener());
     }
 
-    protected virtual void Update()
+    IEnumerator NetworkEventsListener()
     {
-        if (first)
+        Debug.Log("SyncPoseServer: NetworkEventsListener started");
+        int outHostID;
+        int outConnectionID;
+        int outChannelID;
+        int actualMessageLength;
+        byte error;
+        var eventType = NetworkTransport.Receive(out outHostID, out outConnectionID, out outChannelID,
+                messageBuffer, messageBuffer.Length, out actualMessageLength, out error);
+        while (true)
         {
-            first = false;
-            Debug.Log($"CenterEyeCamera position: {centerEyeCamera.position}");
-
-            transform.position = centerEyeCamera.position;
-            transform.rotation = centerEyeCamera.rotation;
-        }
-        try
-        {
-            var eventType = NetworkTransport.Receive(out int outHostID, out int outConnectionID, out int outChannelID,
-                messageBuffer, messageBuffer.Length, out int actualMessageLength, out byte error);
             switch (eventType)
             {
                 case NetworkEventType.Nothing:
-                    // Nothing has happend. That's a good thing :-)
+                    yield return new WaitForSeconds(0.01f);
                     break;
                 case NetworkEventType.BroadcastEvent:
                     Debug.Log($"SyncPoseReceiver: Received a broadcast message");
@@ -91,8 +91,10 @@ public class SyncPoseReceiver : SyncPose
                     connectionLost.Invoke();
                     break;
             }
+
+            eventType = NetworkTransport.Receive(out outHostID, out outConnectionID, out outChannelID,
+            messageBuffer, messageBuffer.Length, out actualMessageLength, out error);
         }
-        catch (NullReferenceException) { } // This happens when nobody listens to the connection events
     }
 
     private void SendImage()
@@ -101,9 +103,13 @@ public class SyncPoseReceiver : SyncPose
 
         byte[] message1 = new byte[MESSAGE_LENGTH];
         byte[] imageLengthBytes = BitConverter.GetBytes(image.Length);
+        byte[] imageWidth = BitConverter.GetBytes(phoneCamera.targetTexture.width);
+        byte[] imageHeight = BitConverter.GetBytes(phoneCamera.targetTexture.height);
         Array.Copy(imageLengthBytes, 0, message1, 0, 4);
-        int bytesToSend1 = Math.Min(image.Length, MESSAGE_LENGTH - 4);
-        Array.Copy(image, 0, message1, 4, bytesToSend1);
+        Array.Copy(imageWidth, 0, message1, 4, 4);
+        Array.Copy(imageHeight, 0, message1, 8, 4);
+        int bytesToSend1 = Math.Min(image.Length, MESSAGE_LENGTH - 12);
+        Array.Copy(image, 0, message1, 12, bytesToSend1);
         SendData(message1);
 
         int sentBytes = bytesToSend1;
