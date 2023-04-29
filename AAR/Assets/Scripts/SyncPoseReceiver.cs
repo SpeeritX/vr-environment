@@ -23,7 +23,8 @@ public class SyncPoseReceiver : SyncPose
     [SerializeField]
     private Camera phoneCamera;
 
-    private bool synchronized = false;
+    private int synchronizationStage = 0;
+    private float distanceMultiplier = 1;
     private Vector3 initialPhonePosition;
     private Vector3 initialHeadsetPosition;
     private float initialPhoneRotation;
@@ -81,7 +82,6 @@ public class SyncPoseReceiver : SyncPose
                     connectionEstablished.Invoke();
                     break;
                 case NetworkEventType.DataEvent:
-                    Debug.Log($"SyncPoseReceiver: Received a new pose");
                     Pose p = updateTransform ? UpdateTransform() : DeserializePose(messageBuffer, formatter);
                     newPoseReceived.Invoke(p.position, p.rotation);
                     SendImage();
@@ -158,9 +158,9 @@ public class SyncPoseReceiver : SyncPose
     protected virtual Pose UpdateTransform()
     {
         Pose receivedPose = DeserializePose(messageBuffer, formatter);
-        if (synchronized == false)
+        if (synchronizationStage == 0)
         {
-            synchronized = true;
+            synchronizationStage = 1;
             Debug.Log($"Received pose position: {receivedPose.position}");
             Debug.Log($"CenterEyeCamera position: {centerEyeCamera.position}");
 
@@ -178,21 +178,40 @@ public class SyncPoseReceiver : SyncPose
             Debug.Log($"initialHeadsetPosition: {initialHeadsetPosition}");
             Debug.Log($"initialPhonePosition: {initialPhonePosition}");
         }
-        else
+        else if (synchronizationStage == 1)
         {
-            Vector3 relativePosition = receivedPose.position - initialPhonePosition;
-            Debug.Log($"Relative position: {relativePosition}");
-            Vector3 rotatedRelativePosition = Quaternion.Euler(0, -rotationShift, 0) * relativePosition;
-            Debug.Log($"Rotated relative position: {rotatedRelativePosition}");
-            transform.position = initialHeadsetPosition + rotatedRelativePosition;
+            // Calculate distance of a phone from its initial position
+            float phoneShiftLength = GetRelativePhoneShift(receivedPose).magnitude;
+            Debug.Log($"Shift length: {phoneShiftLength}");
+            // Calculate distance of a headset from its initial position
+            Vector3 headsetShift = centerEyeCamera.position - initialHeadsetPosition;
+            float headsetShiftLength = headsetShift.magnitude;
+            Debug.Log($"Headset shift length: {headsetShiftLength}");
+            // Calculate the distance multiplier
+            distanceMultiplier = headsetShiftLength / phoneShiftLength;
+            Debug.Log($"Distance multiplier: {distanceMultiplier}");
+            synchronizationStage = 2;
+        }
 
-            Debug.Log($"Phone rotation before adjustment: {receivedPose.rotation.eulerAngles}");
-            Quaternion relativeRotation = receivedPose.rotation * Quaternion.Euler(0, -initialPhoneRotation, 0); ;
-            Debug.Log($"Relative phone rotation: {relativeRotation.eulerAngles}");
-            transform.rotation = Quaternion.Euler(0, initialHeadsetRotation, 0) * relativeRotation;
-            Debug.Log($"Phone rotation including headset starting position: {transform.rotation.eulerAngles}");
+        if (synchronizationStage == 2)
+        {
+            transform.position = initialHeadsetPosition + GetRelativePhoneShift(receivedPose);
+            transform.rotation = Quaternion.Euler(0, initialHeadsetRotation, 0) * GetRelativePhoneRotation(receivedPose);
         }
         return receivedPose;
+    }
+
+    private Vector3 GetRelativePhoneShift(Pose receivedPose)
+    {
+        Vector3 relativeShift = (receivedPose.position - initialPhonePosition) * distanceMultiplier;
+        Vector3 rotatedRelativeShift = Quaternion.Euler(0, -rotationShift, 0) * relativeShift;
+        return rotatedRelativeShift;
+    }
+
+    private Quaternion GetRelativePhoneRotation(Pose receivedPose)
+    {
+        Quaternion relativeRotation = receivedPose.rotation * Quaternion.Euler(0, -initialPhoneRotation, 0); ;
+        return relativeRotation;
     }
 
     protected virtual int ConnectToTheServer(string address)
