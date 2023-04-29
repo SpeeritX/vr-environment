@@ -36,8 +36,6 @@ public class SyncPoseReceiver : SyncPose
     public UnityEvent connectionLost;
     public UnityEventPose newPoseReceived;
 
-    private bool first = true;
-
     protected override void Start()
     {
         base.Start();
@@ -105,11 +103,13 @@ public class SyncPoseReceiver : SyncPose
         byte[] imageLengthBytes = BitConverter.GetBytes(image.Length);
         byte[] imageWidth = BitConverter.GetBytes(phoneCamera.targetTexture.width);
         byte[] imageHeight = BitConverter.GetBytes(phoneCamera.targetTexture.height);
+        byte[] phoneDistance = BitConverter.GetBytes(CalculatePhoneDistance());
         Array.Copy(imageLengthBytes, 0, message1, 0, 4);
         Array.Copy(imageWidth, 0, message1, 4, 4);
         Array.Copy(imageHeight, 0, message1, 8, 4);
-        int bytesToSend1 = Math.Min(image.Length, MESSAGE_LENGTH - 12);
-        Array.Copy(image, 0, message1, 12, bytesToSend1);
+        Array.Copy(phoneDistance, 0, message1, 12, 4);
+        int bytesToSend1 = Math.Min(image.Length, MESSAGE_LENGTH - 16);
+        Array.Copy(image, 0, message1, 16, bytesToSend1);
         SendData(message1);
 
         int sentBytes = bytesToSend1;
@@ -188,7 +188,11 @@ public class SyncPoseReceiver : SyncPose
             float headsetShiftLength = headsetShift.magnitude;
             Debug.Log($"Headset shift length: {headsetShiftLength}");
             // Calculate the distance multiplier
-            distanceMultiplier = headsetShiftLength / phoneShiftLength;
+            if (phoneShiftLength != 0 && headsetShiftLength != 0)
+            {
+                distanceMultiplier = headsetShiftLength / phoneShiftLength;
+            }
+
             Debug.Log($"Distance multiplier: {distanceMultiplier}");
             synchronizationStage = 2;
         }
@@ -214,6 +218,10 @@ public class SyncPoseReceiver : SyncPose
         return relativeRotation;
     }
 
+    private float CalculatePhoneDistance()
+    {
+        return (transform.position - centerEyeCamera.position).magnitude;
+    }
     protected virtual int ConnectToTheServer(string address)
     {
         Debug.Log($"SyncPoseReceiver: Connecting to the server at {address}");
