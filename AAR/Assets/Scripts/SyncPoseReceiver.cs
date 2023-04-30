@@ -23,7 +23,7 @@ public class SyncPoseReceiver : SyncPose
     [SerializeField]
     private Camera phoneCamera;
 
-    private int synchronizationStage = 0;
+    public static int synchronizationStage = 0;
     private float distanceMultiplier = 1;
     private Vector3 initialPhonePosition;
     private Vector3 initialHeadsetPosition;
