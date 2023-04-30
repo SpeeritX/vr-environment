@@ -87,6 +87,7 @@ public class SyncPoseReceiver : SyncPose
                 case NetworkEventType.DisconnectEvent:
                     Debug.Log($"SyncPoseReceiver: Disconnected from the server");
                     connectionLost.Invoke();
+                    synchronizationStage=0;
                     break;
             }
 

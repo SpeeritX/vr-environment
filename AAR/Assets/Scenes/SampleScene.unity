@@ -1912,11 +1912,11 @@ VideoPlayer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1619752057}
   m_Enabled: 1
-  m_VideoClip: {fileID: 32900000, guid: b64b802b22f4e494dab6b71c29320a44, type: 3}
+  m_VideoClip: {fileID: 32900000, guid: c8be5e5d5a5e62742ad3f2c24dd751e9, type: 3}
   m_TargetCameraAlpha: 1
   m_TargetCamera3DLayout: 0
   m_TargetCamera: {fileID: 0}
-  m_TargetTexture: {fileID: 8400000, guid: f5cad02a9e9036f4d954b47211b13116, type: 2}
+  m_TargetTexture: {fileID: 8400000, guid: 598a6b855bc550a45aab767a0883ec1a, type: 2}
   m_TimeReference: 0
   m_TargetMaterialRenderer: {fileID: 0}
   m_TargetMaterialProperty: <noninit>
@@ -1982,7 +1982,7 @@ VideoPlayer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1632731088}
   m_Enabled: 1
-  m_VideoClip: {fileID: 32900000, guid: b64b802b22f4e494dab6b71c29320a44, type: 3}
+  m_VideoClip: {fileID: 32900000, guid: 9ae138902ae185c4189341fce62ffedc, type: 3}
   m_TargetCameraAlpha: 1
   m_TargetCamera3DLayout: 0
   m_TargetCamera: {fileID: 0}
@@ -2066,7 +2066,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 8400000, guid: f5cad02a9e9036f4d954b47211b13116, type: 2}
+  m_Texture: {fileID: 8400000, guid: 598a6b855bc550a45aab767a0883ec1a, type: 2}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -2275,7 +2275,10 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'Phase 2: Phone is 1m away from headset'
+  m_text: 'Phase 2: Phone is 1m away from headset.
+
+    Keep phone still - do not
+    rotate'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
